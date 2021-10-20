@@ -1,0 +1,148 @@
+local blocksize = 64 -- distance between block centers
+local edge = 1 -- left and right edge
+local bottom_edge = 1 -- bottom edge
+local boardwidth = 10 -- number of columns
+local boardheight = 10 -- number of rows
+local liftsize = 480
+local first_game = true
+local last_color = -1
+local clicable = true
+
+
+function init(self)
+	self.board = {}
+
+	msg.post(".", "acquire_input_focus")
+end
+
+local function create_color_table()
+	local color_table = {}
+	math.randomseed(os.time())
+	
+	for x = 0, boardwidth - 1 do
+		color_table[x] = {}
+		for y = 0, boardheight - 1 do
+			color_table[x][y] = 0
+		end
+	end
+
+	local x_pos = 0
+	local y_pos = 0
+	
+	for x = 0, 49 do
+		repeat
+			x_pos = math.random(0, 9)
+			y_pos = math.random(0, 9)
+		until color_table[x_pos][y_pos] == 0
+		
+		color_table[x_pos][y_pos] = 1
+	end
+	return color_table
+end
+
+local function build_board()
+	local board = {}
+	math.randomseed(os.time())
+	local color_table = create_color_table()
+	local pos = vmath.vector3()
+	local x = 0
+	local y = 0
+	for x = 0, boardwidth - 1 do
+		pos.x = edge + blocksize / 2 + blocksize * x 
+		board[x] = {}
+		for y = 0, boardheight - 1 do
+			pos.y = bottom_edge + blocksize / 2 + blocksize * y + liftsize
+			local color_num = color_table[x][y]
+			local id = factory.create('#mines_factory', pos, null, {color = color_num,  parent = msg.url(), x = x, y = y})
+			board[x][y] = {id = id, x = x, y = y, color = color_num}
+		end
+	end
+	return board
+end
+
+local function change_mine_color(self, x, y)
+	local slot = self.board[x][y]
+	msg.post(slot.id, "change_color_and_points")
+
+end
+
+local function show_colored_board(self)
+	for x = 0, boardwidth - 1 do
+		for y = 0, boardheight - 1 do
+			local slot = self.board[x][y]
+			msg.post(slot.id, "change_color")
+		end
+	end
+end
+
+local function hide_colored_board(self)
+	msg.post("/board#main_gui", 'clicable')
+	clicable = true
+	for x = 0, boardwidth - 1 do
+		for y = 0, boardheight - 1 do
+			local slot = self.board[x][y]
+			msg.post(slot.id, "change_gray")
+		end
+	end
+end
+
+local function clear_board(self)
+	for x = 0, boardwidth - 1 do
+		for y = 0, boardheight - 1 do
+			local slot = self.board[x][y]
+			go.delete(slot.id)
+		end
+	end
+end
+
+local function check_previous_color(self, x, y)
+	print(x, y)
+	if x < 0 or x >= boardwidth or y < 0 or y >= boardheight or table.getn(self.board) == 0 or self.board[x][y] == nil then
+		return
+	end
+	
+	local slot = self.board[x][y]
+
+	if last_color == -1 then
+		last_color = slot.color
+	end
+
+	if slot.color ~= last_color then
+		msg.post(slot.id, "change_color")
+		clicable = false
+		msg.post("/board#main_gui", 'end')
+		last_color = -1
+		return
+	end
+
+	change_mine_color(self, x, y)
+
+	last_color = slot.color
+end
+	
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("start_level") then
+		if not first_game then
+			clear_board(self)
+		end
+		first_game = false
+		msg.post("/board#main_gui", 'not_clicable')
+		clicable = false
+		self.board = build_board()
+		show_colored_board(self)
+		timer.delay(3, false, hide_colored_board)
+	end
+end
+
+function on_input(self, action_id, action)
+	if not clicable then
+		return
+	end
+
+	if action_id == hash("touch") and action.pressed then
+		local x = math.floor((action.x - edge) / blocksize)
+		local y = math.floor((action.y - liftsize - bottom_edge) / blocksize)
+		check_previous_color(self, x, y)
+	end
+end

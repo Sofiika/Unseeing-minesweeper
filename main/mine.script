@@ -1,0 +1,38 @@
+go.property('color', 0)
+go.property("parent", msg.url())
+go.property('x', 0)
+go.property('y', 0)
+local normal_scale = 0.117
+
+function init(self)
+	go.set_scale(normal_scale)
+	self.colored = false
+end
+
+local function change_color(self)
+	if self.color == 0 then
+		msg.post("#sprite", "play_animation", { id = hash("red_mine") })
+	else
+		msg.post("#sprite", "play_animation", { id = hash("blue_mine") })
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash('change_gray') then
+		self.colored = false
+		msg.post("#sprite", "play_animation", { id = hash("gray_mine") })
+	elseif message_id == hash('change_color_and_points') then
+		if self.colored == false then
+			self.colored = true
+			msg.post("/board#main_gui", 'increase_points')
+			change_color(self)
+		end
+	elseif message_id == hash('change_color') then
+		self.colored = true
+		change_color(self)
+		
+	elseif message_id == hash('remove_mine') then
+		go.delete()
+	end
+end
+		
