@@ -1,14 +1,13 @@
-go.property('color', 0)
-go.property("parent", msg.url())
-go.property('x', 0)
-go.property('y', 0)
-local normal_scale = 0.117
+go.property('color', 0) -- цвет мины
+local normal_scale = 0.117 -- коэффициент изменения размера
 
 function init(self)
+	-- так как картинки на атласе слишком большие, их надо уменьшить
 	go.set_scale(normal_scale)
 	self.colored = false
 end
 
+-- меняет цвет мины
 local function change_color(self)
 	if self.color == 0 then
 		msg.post("#sprite", "play_animation", { id = hash("red_mine") })
@@ -18,19 +17,22 @@ local function change_color(self)
 end
 
 function on_message(self, message_id, message, sender)
+	-- меняет цвет на серый
 	if message_id == hash('change_gray') then
 		self.colored = false
 		msg.post("#sprite", "play_animation", { id = hash("gray_mine") })
+	-- если мина еще не раскрашена, раскрашивает ее и увеличивает число очков
 	elseif message_id == hash('change_color_and_points') then
 		if self.colored == false then
 			self.colored = true
 			msg.post("/board#main_gui", 'increase_points')
 			change_color(self)
 		end
+	-- раскрашивает мину
 	elseif message_id == hash('change_color') then
 		self.colored = true
 		change_color(self)
-		
+	-- удаляет мину
 	elseif message_id == hash('remove_mine') then
 		go.delete()
 	end

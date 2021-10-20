@@ -1,24 +1,25 @@
-local clicable = true
-local points = 0
+local clicable = true -- реагирует на нажатие или нет
+local points = 0 -- число очков
 
 function init(self)
 	msg.post(".", "acquire_input_focus")
+	-- вначале не показан текст конца игры
 	local node = gui.get_node("end_text")
 	gui.set_enabled(node, false)
-	-- Add initialization code here
-	-- Learn more: https://defold.com/manuals/script/
-	-- Remove this function if not needed
 end
 
 function on_message(self, message_id, message, sender)
+	-- установливает значение переменной clicable
 	if message_id == hash("not_clicable") then
 		clicable = false
 	elseif message_id == hash("clicable") then
 		clicable = true
+	-- увеличивает число очков
 	elseif message_id == hash("increase_points") then
 		points = points + 1
 		local points_num = gui.get_node('points_num')
 		gui.set_text(points_num, points)
+	-- показывает текст конца игры
 	elseif message_id == hash("end") then
 		local node = gui.get_node("end_text")
 		gui.set_text(node, "THE END, YOUR POINTS: " .. points)
@@ -34,14 +35,20 @@ function on_input(self, action_id, action)
 	end
 	
 	if action_id  == hash("touch") and action.pressed then
+		-- если нажали на кнопку старт/рестарт
 		if gui.pick_node(start, action.x, action.y) then
 			local start_text = gui.get_node('start_text')
 			gui.set_text(start_text, 'RESTART')
+
+			--убирается текст конца игры
 			local node = gui.get_node("end_text")
 			gui.set_enabled(node, false)
-			points = 0
+
+			-- обнуляется число очков
+			points = 0 
 			local points_num = gui.get_node('points_num')
 			gui.set_text(points_num, points)
+			
 			msg.post('/board#main', 'start_level')
 		end
 	end
